@@ -1,49 +1,31 @@
 # EasePi-R2 Armbian Build
 
-这是一个给 **EasePi-R2 / RK3588** 编译自定义 Armbian 镜像的构建套件。
+给 **EasePi-R2 / RK3588** 编译 Armbian 镜像。
 
-当前仓库根目录应包含：
+本仓库提供 EasePi-R2 的 Armbian `userpatches` 配置和一键编译脚本，支持编译：
 
 ```text
-EasePi-R2-Armbian-Build/
-├── build.sh
-├── README.md
-├── LICENSE
-├── .gitattributes
-└── userpatches/
-    ├── config/
-    ├── kernel/
-    ├── u-boot/
-    ├── extensions/
-    ├── overlay/
-    └── customize-image.sh
+minimal   最小系统镜像
+server    服务端镜像
+desktop   桌面版镜像
 ```
-
-支持三类镜像：
-
-| 类型 | 命令参数 | 适合用途 |
-|---|---|---|
-| 最小镜像 | `minimal` | 首次验证启动、调试设备树、测试基础驱动 |
-| 服务端镜像 | `server` | 路由器、NAS、Docker、LXC、OpenWrt LXC 底座 |
-| 桌面镜像 | `desktop` | HDMI、XFCE、浏览器、远程桌面、GPU 图形测试 |
-
-支持三条内核路线：
-
-| 分支 | 命令参数 | 适合用途 |
-|---|---|---|
-| 主线常规分支 | `current` | 默认推荐，优先测试主线内核 |
-| 主线测试分支 | `edge` | 测试更新内核、新驱动、新补丁 |
-| Rockchip 厂商分支 | `vendor` | 测试 NPU、MPP、RGA、VPU 等厂商生态能力 |
 
 ---
 
-## 一、准备编译环境
+## 一、基础环境要求
 
-推荐使用：
+推荐使用 **原生 Linux 主机** 或 **Linux 虚拟机**。
+
+推荐系统：
 
 ```text
-Ubuntu 24.04 / Ubuntu 22.04 / Debian 12 / Debian 13
+Ubuntu 24.04
+Ubuntu 22.04
+Debian 12
+Debian 13
 ```
+
+不推荐使用 WSL 编译，可能遇到文件系统、权限、loop 设备、binfmt、Docker、网络缓存等问题。
 
 建议配置：
 
@@ -51,37 +33,10 @@ Ubuntu 24.04 / Ubuntu 22.04 / Debian 12 / Debian 13
 CPU：4 核以上
 内存：8GB 起步，推荐 16GB 以上
 磁盘：80GB 起步，推荐 150GB 以上
-网络：能访问 GitHub、Debian / Ubuntu / Armbian 软件源
+网络：能正常访问 GitHub 和 Debian / Ubuntu 软件源
 ```
 
-Windows 用户建议使用 **WSL2 Ubuntu 24.04**。
-
-安装基础依赖：
-
-```bash
-sudo apt update
-sudo apt install -y git curl wget rsync unzip xz-utils \
-  build-essential gcc g++ make bc bison flex \
-  libssl-dev libncurses-dev python3 python3-pip \
-  python3-setuptools file cpio qemu-user-static \
-  binfmt-support debootstrap ca-certificates
-```
-
----
-
-## 二、下载 Armbian build 和本仓库
-
-建议统一放到 `~/rk3588_build`：
-
-```bash
-mkdir -p ~/rk3588_build
-cd ~/rk3588_build
-
-git clone --depth=1 https://github.com/armbian/build.git build
-git clone https://github.com/fk1124/EasePi-R2-Armbian-Build.git
-```
-
-最终目录结构建议是：
+建议目录结构：
 
 ```text
 ~/rk3588_build/
@@ -94,7 +49,27 @@ git clone https://github.com/fk1124/EasePi-R2-Armbian-Build.git
 
 ---
 
-## 三、放入 EasePi-R2 配置
+## 二、安装依赖
+
+```bash
+sudo apt update
+sudo apt install -y git curl wget rsync unzip xz-utils
+sudo apt install -y build-essential gcc g++ make bc bison flex
+sudo apt install -y libssl-dev libncurses-dev python3 python3-pip python3-setuptools
+sudo apt install -y file cpio qemu-user-static binfmt-support debootstrap ca-certificates
+```
+
+---
+
+## 三、下载源码
+
+```bash
+mkdir -p ~/rk3588_build
+cd ~/rk3588_build
+
+git clone --depth=1 https://github.com/armbian/build.git build
+git clone https://github.com/fk1124/EasePi-R2-Armbian-Build.git
+```
 
 进入本仓库：
 
@@ -102,24 +77,91 @@ git clone https://github.com/fk1124/EasePi-R2-Armbian-Build.git
 cd ~/rk3588_build/EasePi-R2-Armbian-Build
 ```
 
-把 `userpatches/` 同步到 Armbian build 目录：
+同步 EasePi-R2 配置：
 
 ```bash
 rsync -a userpatches/ ../build/userpatches/
 chmod +x build.sh
 ```
 
-确认板级配置已经放好：
+确认配置存在：
 
 ```bash
 ls ../build/userpatches/config/boards/easepi-r2.conf
 ```
 
-能看到文件路径，说明配置正常。
+---
+
+## 四、编译 minimal 镜像
+
+```bash
+cd ~/rk3588_build/EasePi-R2-Armbian-Build
+bash build.sh current trixie minimal
+```
+
+`minimal` 是最小系统镜像，适合精简系统、命令行环境、基础服务场景。
 
 ---
 
-## 四、编译三类镜像
+## 五、编译 server 镜像
+
+```bash
+cd ~/rk3588_build/EasePi-R2-Armbian-Build
+bash build.sh current trixie server
+```
+
+`server` 是服务端镜像，适合路由器底座、NAS、Docker、LXC、OpenWrt LXC、轻量服务器等场景。
+
+---
+
+## 六、编译 desktop 镜像
+
+```bash
+cd ~/rk3588_build/EasePi-R2-Armbian-Build
+bash build.sh current trixie desktop
+```
+
+`desktop` 是桌面版镜像，适合 HDMI、本地图形界面、XFCE、浏览器、远程桌面等场景。
+
+---
+
+## 七、常用命令汇总
+
+### current 主线常规内核
+
+```bash
+bash build.sh current trixie minimal
+bash build.sh current trixie server
+bash build.sh current trixie desktop
+```
+
+### edge 主线较新内核
+
+```bash
+bash build.sh edge trixie minimal
+bash build.sh edge trixie server
+bash build.sh edge trixie desktop
+```
+
+### vendor Rockchip 厂商内核
+
+```bash
+bash build.sh vendor trixie minimal
+bash build.sh vendor trixie server
+bash build.sh vendor trixie desktop
+```
+
+如果 `vendor + trixie` 编译不顺，可以使用 Debian 12：
+
+```bash
+bash build.sh vendor bookworm minimal
+bash build.sh vendor bookworm server
+bash build.sh vendor bookworm desktop
+```
+
+---
+
+## 八、参数说明
 
 命令格式：
 
@@ -127,146 +169,34 @@ ls ../build/userpatches/config/boards/easepi-r2.conf
 bash build.sh [内核分支] [系统版本] [镜像类型]
 ```
 
-常用参数：
+内核分支：
 
 ```text
-内核分支：current / edge / vendor
-系统版本：trixie / bookworm
-镜像类型：minimal / server / desktop
+current   主线常规内核
+edge      主线较新内核
+vendor    Rockchip 厂商内核
 ```
 
-默认推荐使用：
-
-```bash
-bash build.sh current trixie minimal
-```
-
----
-
-## 五、编译 minimal 镜像
-
-首次测试建议先编译 minimal，体积最小，最适合验证能不能启动。
-
-```bash
-cd ~/rk3588_build/EasePi-R2-Armbian-Build
-bash build.sh current trixie minimal
-```
-
-含义：
+系统版本：
 
 ```text
-current  = 主线常规内核
-trixie   = Debian 13
-minimal  = 最小镜像
+trixie     Debian 13
+bookworm   Debian 12
 ```
 
-适合验证：
+镜像类型：
 
 ```text
-启动链
-设备树
-TF / eMMC
-基础网口
-USB
-基础 SSH 登录
-```
-
----
-
-## 六、编译 server 镜像
-
-server 适合长期作为无桌面系统使用。
-
-```bash
-cd ~/rk3588_build/EasePi-R2-Armbian-Build
-bash build.sh current trixie server
-```
-
-适合用途：
-
-```text
-主路由底座
-Docker
-LXC
-OpenWrt LXC
-NAS 服务
-轻量服务器
-```
-
----
-
-## 七、编译 desktop 镜像
-
-desktop 适合测试图形界面和 HDMI 输出。
-
-```bash
-cd ~/rk3588_build/EasePi-R2-Armbian-Build
-bash build.sh current trixie desktop
-```
-
-适合用途：
-
-```text
-HDMI 显示
-XFCE 桌面
-浏览器
-远程桌面
-GPU 图形环境测试
-```
-
-建议先确认 `minimal` 可以正常启动，再编译 `desktop`。
-
----
-
-## 八、测试不同内核分支
-
-### 1. current：默认推荐
-
-```bash
-bash build.sh current trixie minimal
-```
-
-适合主线内核日常测试。
-
----
-
-### 2. edge：更新主线测试版
-
-```bash
-bash build.sh edge trixie minimal
-```
-
-适合测试更新内核、新驱动、新设备树变化。
-
----
-
-### 3. vendor：Rockchip 厂商内核
-
-```bash
-bash build.sh vendor trixie minimal
-```
-
-如果 `vendor + trixie` 编译失败，可以改用：
-
-```bash
-bash build.sh vendor bookworm minimal
-```
-
-vendor 分支更适合测试：
-
-```text
-RKNPU
-MPP
-RGA
-VPU
-Rockchip BSP 相关能力
+minimal    最小系统镜像
+server     服务端镜像
+desktop    桌面版镜像
 ```
 
 ---
 
 ## 九、编译产物位置
 
-编译成功后，镜像一般在：
+编译完成后，镜像一般在：
 
 ```bash
 ~/rk3588_build/build/output/images/
@@ -278,7 +208,7 @@ Rockchip BSP 相关能力
 ls -lh ~/rk3588_build/build/output/images/
 ```
 
-常见产物类似：
+常见产物：
 
 ```text
 Armbian-unofficial_*.img
@@ -286,44 +216,11 @@ Armbian-unofficial_*.img.xz
 Armbian-unofficial_*.sha
 ```
 
-可以把 `.img` 或 `.img.xz` 写入 TF 卡、USB 存储或 eMMC 测试。
+可以将 `.img` 或 `.img.xz` 写入 TF 卡、USB 存储或 eMMC。
 
 ---
 
-## 十、一键复制版
-
-从零开始，直接执行：
-
-```bash
-sudo apt update
-sudo apt install -y git curl wget rsync unzip xz-utils \
-  build-essential gcc g++ make bc bison flex \
-  libssl-dev libncurses-dev python3 python3-pip \
-  python3-setuptools file cpio qemu-user-static \
-  binfmt-support debootstrap ca-certificates
-
-mkdir -p ~/rk3588_build
-cd ~/rk3588_build
-
-git clone --depth=1 https://github.com/armbian/build.git build
-git clone https://github.com/fk1124/EasePi-R2-Armbian-Build.git
-
-cd EasePi-R2-Armbian-Build
-rsync -a userpatches/ ../build/userpatches/
-chmod +x build.sh
-
-bash build.sh current trixie minimal
-```
-
-编译成功后查看镜像：
-
-```bash
-ls -lh ~/rk3588_build/build/output/images/
-```
-
----
-
-## 十一、更新仓库后重新编译
+## 十、更新后重新编译
 
 更新 Armbian build：
 
@@ -339,7 +236,7 @@ cd ~/rk3588_build/EasePi-R2-Armbian-Build
 git pull --ff-only
 ```
 
-重新同步 `userpatches/`：
+重新同步配置：
 
 ```bash
 rsync -a userpatches/ ../build/userpatches/
@@ -353,19 +250,17 @@ bash build.sh current trixie minimal
 
 ---
 
-## 十二、常见问题
+## 十一、常见问题
 
-### 1. 提示找不到 Armbian build 目录
+### 1. 找不到 Armbian build 目录
 
-如果出现：
+如果提示：
 
 ```text
 ERROR: Cannot find Armbian build directory.
 ```
 
-说明 `build.sh` 没找到官方 Armbian `build/` 目录。
-
-推荐目录结构：
+请确认目录结构为：
 
 ```text
 ~/rk3588_build/
@@ -373,38 +268,29 @@ ERROR: Cannot find Armbian build directory.
 └── EasePi-R2-Armbian-Build/
 ```
 
-如果你的目录不一样，可以手动指定：
+如果 Armbian build 在其他目录，可以手动指定：
 
 ```bash
 export ARMBIAN_BUILD_DIR=/你的路径/build
 bash build.sh current trixie minimal
 ```
 
----
+### 2. 找不到 easepi-r2.conf
 
-### 2. 提示找不到 easepi-r2.conf
-
-如果出现：
+如果提示：
 
 ```text
 ERROR: easepi-r2.conf not found
 ```
 
-说明还没把本仓库的 `userpatches/` 同步到 Armbian build 目录。
-
-执行：
+重新同步 `userpatches`：
 
 ```bash
 cd ~/rk3588_build/EasePi-R2-Armbian-Build
 rsync -a userpatches/ ../build/userpatches/
-bash build.sh current trixie minimal
 ```
 
----
-
-### 3. 上次编译失败后，重新编译仍然失败
-
-可以先清理部分缓存：
+### 3. 需要清理缓存后重新编译
 
 ```bash
 cd ~/rk3588_build/build
@@ -421,13 +307,11 @@ cd ~/rk3588_build/EasePi-R2-Armbian-Build
 bash build.sh current trixie minimal
 ```
 
----
+### 4. 临时关闭外设扩展
 
-### 4. 想临时关闭红外 / 蓝牙扩展
+默认启用 EasePi-R2 红外、蓝牙等外设扩展。
 
-默认会启用 EasePi-R2 红外、蓝牙相关扩展。
-
-如需临时关闭：
+临时关闭：
 
 ```bash
 EASEPI_R2_PERIPHERALS=no bash build.sh current trixie minimal
@@ -435,80 +319,55 @@ EASEPI_R2_PERIPHERALS=no bash build.sh current trixie minimal
 
 ---
 
-## 十三、推荐编译顺序
+## 十二、仓库文件说明
 
-建议按这个顺序测试：
-
-```bash
-# 1. 先验证最小主线镜像
-bash build.sh current trixie minimal
-
-# 2. 再验证服务端镜像
-bash build.sh current trixie server
-
-# 3. 最后验证桌面镜像
-bash build.sh current trixie desktop
-
-# 4. 需要测试更新主线时
-bash build.sh edge trixie minimal
-
-# 5. 需要测试厂商内核时
-bash build.sh vendor bookworm minimal
+```text
+build.sh
 ```
 
----
+编译入口脚本。
 
-## 十四、重要提醒
-
-本项目属于 EasePi-R2 自定义 Armbian 构建套件，适合开发、测试和折腾使用。
-
-建议先写入 TF 卡测试启动，确认网口、存储、USB、HDMI、无线、蓝牙等功能正常后，再考虑写入 eMMC 或长期使用。
-�重新编译：
-
-```bash
-cd ~/rk3588_build/EasePi-R2-Armbian-Build
-bash build.sh current trixie minimal
+```text
+userpatches/config/boards/easepi-r2.conf
 ```
 
----
+EasePi-R2 板级配置文件。
 
-### 4. 想临时关闭红外 / 蓝牙扩展
-
-默认会启用 EasePi-R2 红外、蓝牙相关扩展。
-
-如需临时关闭：
-
-```bash
-EASEPI_R2_PERIPHERALS=no bash build.sh current trixie minimal
+```text
+userpatches/kernel/
 ```
 
----
+内核补丁目录。
 
-## 十三、推荐编译顺序
-
-建议按这个顺序测试：
-
-```bash
-# 1. 先验证最小主线镜像
-bash build.sh current trixie minimal
-
-# 2. 再验证服务端镜像
-bash build.sh current trixie server
-
-# 3. 最后验证桌面镜像
-bash build.sh current trixie desktop
-
-# 4. 需要测试更新主线时
-bash build.sh edge trixie minimal
-
-# 5. 需要测试厂商内核时
-bash build.sh vendor bookworm minimal
+```text
+userpatches/u-boot/
 ```
 
----
+U-Boot 补丁目录。
 
-## 十四、重要提醒
+```text
+userpatches/extensions/
+```
 
-本项目属于 EasePi-R2 自定义 Armbian 构建套件，适合开发、测试和折腾使用。
+Armbian 扩展脚本目录。
 
-建议先写入 TF 卡测试启动，确认网口、存储、USB、HDMI、无线、蓝牙等功能正常�
+```text
+userpatches/overlay/
+```
+
+写入最终系统镜像的覆盖文件目录。
+
+```text
+userpatches/customize-image.sh
+```
+
+镜像定制脚本。
+ches/ ../build/userpatches/
+```
+
+### 3. 需要清理缓存后重新编译
+
+```bash
+cd ~/rk3588_build/build
+
+sudo rm -rf cache/sour
